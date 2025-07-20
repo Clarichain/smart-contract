@@ -12,7 +12,8 @@ platform = "github"
 
 [[dependencies]]
 name = "aiken-lang/stdlib"
-version = "1.5.0"
+version = "v2"
 source = "github"
 
-[config]
+[config.default]
+network_id = 41
