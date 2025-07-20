@@ -1,77 +1,65 @@
-# 🔐 Smart Contracts - Clarichain
+# clari_chain
 
-This repo contains the Plutus smart contracts for Clarichain, built on the **Cardano** blockchain.
+Write validators in the `validators` folder, and supporting functions in the `lib` folder using `.ak` as a file extension.
 
----
-
-## ⚙️ Tech Stack
-- **Blockchain**: Cardano
-- **Smart Contract Language**: Plutus (Haskell)
-- **Tools**:
-  - [`plutus-apps`](https://github.com/input-output-hk/plutus-apps)
-  - [`cardano-cli`](https://github.com/input-output-hk/cardano-node)
-  - [`plutip`](https://github.com/Plutonomicon/plutip) for local testing
-  - [`Aiken`](https://aiken-lang.org/) (optional, if you're using it)
-
----
-
-## 🚀 Getting Started
-
-### 1. Clone Repo
-```bash
-git clone https://github.com/clarichain/smart-contract.git
-cd smart-contract
-```
-## 2. Set Up Plutus Environment
-You can use the `plutus-starter` or `Plutus Playground`.
-If using `nix`:
-
-```bash
-nix-shell
-cabal update
-cabal build
+```aiken
+validator my_first_validator {
+  spend(_datum: Option<Data>, _redeemer: Data, _output_reference: Data, _context: Data) {
+    True
+  }
+}
 ```
 
-If using `Docker` (optional):
+## Building
 
-```bash
-docker-compose up
+```sh
+aiken build
 ```
 
-##🧪 Running Tests
-If using `Plutip` or `emulator`:
+## Configuring
 
-```bash
-cabal test
-```
-If using Aiken:
-
-```bash
-aiken test
+**aiken.toml**
+```toml
+[config.default]
+network_id = 41
 ```
 
-## 📁 Project Structure
-```bash
-📦 smart-contract/
-├── src/              # Smart contracts (Plutus scripts)
-├── test/             # Tests and simulations
-├── scripts/          # Deployment scripts (cardano-cli, plutip)
-├── assets/           # Policy IDs, compiled scripts
-├── README.md
-└── ...
-```
-## 📄 Deployment (Local or Testnet)
-Example with `cardano-cli`:
-```bash
-cardano-cli transaction build \
-  --alonzo-era \
-  --testnet-magic 1097911063 \
-  --tx-in ... \
-  --tx-out ... \
-  --change-address ... \
-  --out-file tx.raw
-  ```
-Use `cardano-wallet` or `blockfrost API` for easier integration.
+Or, alternatively, write conditional environment modules under `env`.
 
-## 🧠 Contribution
-See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, PR rules, and code style.
+## Testing
+
+You can write tests in any module using the `test` keyword. For example:
+
+```aiken
+use config
+
+test foo() {
+  config.network_id + 1 == 42
+}
+```
+
+To run all tests, simply do:
+
+```sh
+aiken check
+```
+
+To run only tests matching the string `foo`, do:
+
+```sh
+aiken check -m foo
+```
+
+## Documentation
+
+If you're writing a library, you might want to generate an HTML documentation for it.
+
+Use:
+
+```sh
+aiken docs
+```
+
+## Resources
+
+Find more on the [Aiken's user manual](https://aiken-lang.org).
