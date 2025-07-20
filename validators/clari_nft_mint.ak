@@ -1,12 +1,5 @@
-// validator clari_nft_mint {
-//     fn mint() {
-
-//     }
-// }
-
-fn say_hello() {
-    trace @"Hello"
-    true
+validator my_first_validator {
+  spend(_datum: Option<Data>, _redeemer: Data, _output_reference: Data, _context: Data) {
+    True
+  }
 }
-
-say_hello();
