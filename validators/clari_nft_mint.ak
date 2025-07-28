@@ -3,8 +3,9 @@ use cardano/assets.{PolicyId, AssetName}
 use cardano/transaction.{Transaction}
 use cardano/script_context.{ScriptContext}
 use aiken/collection/dict
+use aiken/primitive/bytearray
 use aiken/collection/list
-use aiken/crypto.{VerificationKeyHash}
+use aiken/crypto.{VerificationKeyHash, verify_ed25519_signature, Signature}
 
 pub type RedeemerAction {
   Mint
@@ -16,7 +17,7 @@ pub type RedeemerAction {
 // }
 
 pub type SignatureApproval {
-  signature: ByteArray,
+  signature: Signature,
   party: VerificationKeyHash,
 }
 
@@ -45,7 +46,7 @@ validator clari_nft_validator (authorizedParties: List<VerificationKeyHash>) {
       let MintParams { asset_name: an, approvals } = params
 
       if (quantity != 0) {
-        fail @"Quantity must be one"
+        fail @"Quantity must be above 0"
       } else {
         if (an != asset_name) {
           fail @"Asset name does not match the validator's asset name"
@@ -55,14 +56,7 @@ validator clari_nft_validator (authorizedParties: List<VerificationKeyHash>) {
           } else {
             let i = list.length(authorizedParties)
 
-            search_sig(authorizedParties, params.approvals, i, 0)
-            // for (approval in approvals) {
-            //   if (!list.contains(authorizedParties, approval.party)) {
-            //     fail @"Approval party is not authorized"
-            //   } else {
-            //     True
-            //   }
-            // }
+            search_sig_and_verify(authorizedParties, params.approvals, i, 0, policy_id)
           }
         }
       }
@@ -73,44 +67,21 @@ validator clari_nft_validator (authorizedParties: List<VerificationKeyHash>) {
 //     todo @"spend logic goes here"
 //   }
 
-//   withdraw(_redeemer: Data, _account: Credential, _self: Transaction) {
-//     todo @"withdraw logic goes here"
-//   }
-
-//   publish(_redeemer: Data, _certificate: Certificate, _self: Transaction) {
-//     todo @"publish logic goes here"
-//   }
-
-//   vote(_redeemer: Data, _voter: Voter, _self: Transaction) {
-//     todo @"vote logic goes here"
-//   }
-
-//   propose(_redeemer: Data, _proposal: ProposalProcedure, _self: Transaction) {
-//     todo @"propose logic goes here"
-//   }
-
-  // // If needs be, remove any of unneeded handlers above, and use:
-  //
   else(_ctx: ScriptContext) {
     fail @"fallback logic if none of the other purposes match"
   }
-  //
-  // // You will also need an additional import:
-  // //
-  // // use cardano/script_context.{ScriptContext}
 }
 
-// pub type SigTest {
-//   signature: ByteArray,
-//   party: String,
-// }
 
 
-fn search_sig(x: List<VerificationKeyHash>, y: List<SignatureApproval>, length: Int, index: Int) -> Bool {
+fn search_sig_and_verify(x: List<VerificationKeyHash>, y: List<SignatureApproval>, length: Int, index: Int, contractId: PolicyId) -> Bool {
   let val = list.filter(y, fn (sig) -> Bool {
     expect Some(val) = list.at(x, index)
 
-    sig.party == val
+    and {
+      sig.party == val,
+      verify_contract_signature(sig, contractId)
+    }
   })
 
   if ( list.length(val) <= 0 ) {
@@ -120,9 +91,20 @@ fn search_sig(x: List<VerificationKeyHash>, y: List<SignatureApproval>, length: 
     if (new_index >= length) {
       True
     } else {
-      search_sig(x, y, length, new_index)
+      search_sig_and_verify(x, y, length, new_index, contractId)
     }
   }
+}
+
+fn verify_contract_signature(sig: SignatureApproval, contract: PolicyId) -> Bool {
+  // Construct the signature message
+  let message: ByteArray = bytearray.concat(bytearray.concat(bytearray.concat("I ", sig.party), " agree to the terms of the contract "), contract)
+
+  verify_ed25519_signature(
+    sig.party,
+    message,
+    sig.signature
+  )
 }
 
 test search_sig_test() {
@@ -132,12 +114,12 @@ test search_sig_test() {
     party: #"00000000000000000000000000000000000000000000000000000000"
   }]
 
-  search_sig(x, y, list.length(x), 0)
+  search_sig_and_verify(x, y, list.length(x), 0, #"00000000000000000000000000000000000000000000000000000000")
 }
 
 test clari_nft_validator_mint_test() {
   let y: List<SignatureApproval> = [ SignatureApproval {
-    signature: "hwy",
+    signature: "9148148712377373722474729rhfnxj14u81j24xjnxjndjnxnw",
     party: #"00000000000000000000000000000000000000000000000000000000"
   }]
 
@@ -151,22 +133,20 @@ test clari_nft_validator_mint_test() {
     params: p
   }
 
-  clari_nft_validator([#"00000000000000000000000000000000000000000000000000000000"]).mint(
-    r,
-    #"00000000000000000000000000000000000000000000000000000000",
-    transaction.placeholder
-  )
-  // let params = MintParams {
-  //     asset_name: "Contract 00000000000000000000000000000000000000000000000000000000"
-  //     approvals:  [ SignatureApproval {
-  //       signature: "hwy",
-  //       party: #"00000000000000000000000000000000000000000000000000000000"
-  //     }]
-  //   }
-  // let redeemer = MintRedeemer {
-  //   // action: RedeemerAction.Mint,
-  //   params: params
-  // }
+  True
 
-  // True
+  // clari_nft_validator([#"00000000000000000000000000000000000000000000000000000000"]).mint(
+  //   r,
+  //   #"00000000000000000000000000000000000000000000000000000000",
+  //   transaction.placeholder
+  // )
+}
+
+test concat_vkeyhash_and_bytearray() {
+  let vkeyhash: VerificationKeyHash = #"00000000000000000000000000000000000000000000000000000000"
+  let byte_array: ByteArray = "I agree"
+
+  let x: ByteArray = bytearray.concat(byte_array, vkeyhash)
+
+  True
 }
